@@ -1,6 +1,6 @@
+use huffman::Config;
 use std::env;
 use std::process;
-use huffman::Config;
 
 fn main() {
     let config = Config::from_iter(env::args()).unwrap_or_else(|err| {
