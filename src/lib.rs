@@ -29,7 +29,7 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
 
 // Builds the frequency table for all of the characters of the given
 // contents string slice.
-fn frequency<'a>(contents: &'a str) -> HashMap<char, u32> {
+fn frequency(contents: &str) -> HashMap<char, u32> {
     let mut frequency_table = HashMap::new();
 
     for line in contents.lines() {
