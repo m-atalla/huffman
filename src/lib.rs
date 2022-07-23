@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 use std::{error::Error, fs};
 
+
+pub mod compression;
+
 pub struct Config {
     pub filename: String,
 }
@@ -43,21 +46,22 @@ fn frequency(contents: &str) -> HashMap<char, u32> {
     frequency_table
 }
 
+
+
 #[cfg(test)]
 mod test {
     use super::*;
 
     #[test]
     fn it_generates_frequency_table() {
-        let freq_table = frequency("trust in rust");
+        let freq_table = frequency("huffman");
 
         let expected_freq = HashMap::from([
-            ('t', 3),
-            (' ', 2),
-            ('r', 2),
-            ('u', 2),
-            ('s', 2),
-            ('i', 1),
+            ('h', 1),
+            ('u', 1),
+            ('f', 2),
+            ('m', 1),
+            ('a', 1),
             ('n', 1),
         ]);
 
