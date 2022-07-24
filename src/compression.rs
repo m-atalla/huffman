@@ -2,8 +2,8 @@ use std::cmp::Ordering;
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum Node {
-    Root(Root),
-    Symbol(Symbol)
+    Branch(Root),
+    Leaf(Symbol),
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -16,23 +16,28 @@ pub struct Root {
 #[derive(Debug, Eq, PartialEq)]
 pub struct Symbol {
     pub value: char,
-    pub frequency: u32
+    pub frequency: u32,
 }
 
-impl Ord for Root {
-    fn cmp(&self, other: &Self) -> Ordering {
-        other.frequency.cmp(&self.frequency)
+macro_rules! impl_min_heap {
+    (for $($t:ty),+) => {
+        $(impl Ord for $t {
+            fn cmp(&self, other: &Self) -> Ordering {
+                other.frequency.cmp(&self.frequency)
+            }
+        }
+        impl PartialOrd for $t {
+            fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+                Some(self.cmp(other))
+            }
+        })*
     }
 }
 
-impl PartialOrd for Root {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
+impl_min_heap!(for Root, Symbol);
 
 impl Root {
-    pub fn new(frequency: u32) -> Root { 
+    pub fn new(frequency: u32) -> Root {
         Root {
             left: Box::new(None),
             right: Box::new(None),
