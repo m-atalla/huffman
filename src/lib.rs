@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::{error::Error, fs};
 
-
 pub mod compression;
 
 pub struct Config {
@@ -46,8 +45,6 @@ fn frequency(contents: &str) -> HashMap<char, u32> {
     frequency_table
 }
 
-
-
 #[cfg(test)]
 mod test {
     use super::*;
@@ -56,14 +53,8 @@ mod test {
     fn it_generates_frequency_table() {
         let freq_table = frequency("huffman");
 
-        let expected_freq = HashMap::from([
-            ('h', 1),
-            ('u', 1),
-            ('f', 2),
-            ('m', 1),
-            ('a', 1),
-            ('n', 1),
-        ]);
+        let expected_freq =
+            HashMap::from([('h', 1), ('u', 1), ('f', 2), ('m', 1), ('a', 1), ('n', 1)]);
 
         assert_eq!(freq_table, expected_freq);
     }
