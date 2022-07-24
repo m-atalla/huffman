@@ -44,8 +44,8 @@ impl Node {
 
 /// `BinaryHeap` implementation depends on `Ord` and `PartialOrd` traits
 /// for managing how a value is pushed or popped from the internal data structure
-/// this custom implementation flips the order effectively changing the `BinaryHeap`
-/// collect from a **max heap** (the default) to a **min heap** (priority queue)
+/// this implementation flips the order effectively changing the `BinaryHeap`
+/// collection from a **max heap** (the default) to a **min heap** (priority queue)
 impl Ord for Node {
     fn cmp(&self, other: &Self) -> Ordering {
         // TODO: maybe the following patterns should be replaced with a macro?
