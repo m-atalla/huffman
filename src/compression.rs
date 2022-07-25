@@ -3,24 +3,29 @@ use std::collections::{BinaryHeap, HashMap};
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Root {
-    pub left: Box<Option<Node>>,
-    pub right: Box<Option<Node>>,
+    pub left: Option<Box<Node>>, // 0
+    pub right: Option<Box<Node>>, // 1
     pub frequency: u32,
 }
 
 impl Root {
-    pub fn new(frequency: u32, left: Option<Node>, right: Option<Node>) -> Root {
+    pub fn new(frequency: u32, left: Node, right: Node) -> Root {
         Root {
-            left: Box::new(left),
-            right: Box::new(right),
+            left: Some(Box::new(left)),
+            right: Some(Box::new(right)),
             frequency,
         }
     }
 }
 
+
 impl Default for Root {
     fn default() -> Self {
-        Self::new(0, None, None)
+        Self {
+            frequency: 0,
+            left: None,
+            right: None,
+        }
     }
 }
 
@@ -53,6 +58,19 @@ impl Node {
             Node::Leaf(sym) => &sym.frequency,
         }
     }
+
+    /// compares the current node with another and returns a sorted in a pair tuple
+    ///
+    /// for **pattern matching** the pair tuple:
+    ///  - the smaller node on the left (index 0)
+    ///  - the bigger node on the right (index 1)
+    pub fn cmp_pair(self, other: Node) -> (Node, Node){
+        if self.variant_freq() < other.variant_freq() {
+            (self, other)
+        } else {
+            (other, self)
+        }
+    }
 }
 
 /// `BinaryHeap` implementation depends on `Ord` and `PartialOrd` traits
@@ -61,7 +79,7 @@ impl Node {
 /// collection from a **max heap** (the default) to a **min heap** (priority queue)
 impl Ord for Node {
     fn cmp(&self, other: &Self) -> Ordering {
-        // TODO: maybe the following patterns should be replaced with a macro?
+        // TODO: maybe the following patterns/expressions should be replaced with a macro?
         match self {
             Node::Branch(node) => match other {
                 Node::Branch(other_node) => other_node.frequency.cmp(&node.frequency),
@@ -104,11 +122,13 @@ pub fn create_huffman_tree(mut prio_queue: BinaryHeap<Node>, max_freq: u32) -> R
     while current_freq < max_freq {
         if let Some(n1) = prio_queue.pop() {
             if let Some(n2) = prio_queue.pop() {
-                // new branch frequency is the sum of
+                // new branch frequency
                 let new_freq: u32 = n1.variant_freq() + n2.variant_freq();
 
+                let (left, right) = n1.cmp_pair(n2);
+
                 // update current root and current frequency
-                current_root = Root::new(new_freq, Some(n1), Some(n2));
+                current_root = Root::new(new_freq, left, right);
                 current_freq = new_freq;
 
                 // push the new node back into the priority queue
@@ -135,10 +155,10 @@ mod test {
 
         priority.push(Node::Leaf(Symbol::new('a', 20)));
 
-        priority.push(Node::Branch(Root::new(10, None, None)));
+        priority.push(Node::Branch(Root::default()));
 
         match priority.pop().unwrap() {
-            Node::Branch(node) => assert_eq!(node.frequency, 10),
+            Node::Branch(node) => assert_eq!(node.frequency, 0),
             _ => (),
         };
 
@@ -174,5 +194,22 @@ mod test {
         let tree = create_huffman_tree(prio_queue, max_frequency);
 
         assert_eq!(tree.frequency, max_frequency);
+    }
+
+    #[test]
+    fn it_sorts_node_pair() {
+        let mut r1 = Root::default();
+        let mut r2 = Root::default();
+
+        r1.frequency = 20;
+        r2.frequency = 10;
+
+        let n1 = Node::Branch(r1);
+        let n2 = Node::Branch(r2);
+
+        if let (Node::Branch(s1), Node::Branch(s2)) = n1.cmp_pair(n2) {
+            assert_eq!(s1.frequency, 10);
+            assert_eq!(s2.frequency, 20);
+        }
     }
 }
