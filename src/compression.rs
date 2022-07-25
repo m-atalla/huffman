@@ -16,8 +16,37 @@ impl Root {
             frequency,
         }
     }
+
+    pub fn children(self) -> (Option<Box<Node>> , Option<Box<Node>>){
+        (self.left, self.right)
+    }
+
 }
 
+/// recusively traverses the huffman tree
+/// with an 'encoding_path' string that is updated
+/// upon going left appends a `0` and going right appends a `1`
+/// till it reaches a leaf node at this point, it adds a new entry 
+/// to the `encoding_table` **the key** is the character at the current node 
+/// and **the value** is the 'encoding_path' to the current node.
+pub fn generate_encoding(tree: Root, path: String, mut encoding_table: &mut HashMap<char, String>) {
+    if let (Some(left), Some(right)) = tree.children() {
+        // TODO: change the following matches to a macro as well?
+        match *left {
+            Node::Branch(sub_tree) => generate_encoding(sub_tree, path.clone() + "0", &mut encoding_table), 
+            Node::Leaf(sym) => {
+                encoding_table.insert(sym.value, path.clone() + "0");
+            }
+        }
+
+        match *right {
+            Node::Branch(sub_tree) => generate_encoding(sub_tree, path.clone() + "1", &mut encoding_table), 
+            Node::Leaf(sym) => {
+                encoding_table.insert(sym.value, path.clone() + "1");
+            }
+        }
+    }
+}
 
 impl Default for Root {
     fn default() -> Self {
@@ -120,20 +149,18 @@ pub fn create_huffman_tree(mut prio_queue: BinaryHeap<Node>, max_freq: u32) -> R
     }
 
     while current_freq < max_freq {
-        if let Some(n1) = prio_queue.pop() {
-            if let Some(n2) = prio_queue.pop() {
-                // new branch frequency
-                let new_freq: u32 = n1.variant_freq() + n2.variant_freq();
+        if let (Some(n1), Some(n2)) = (prio_queue.pop(), prio_queue.pop()) {
+            // new branch frequency
+            let new_freq: u32 = n1.variant_freq() + n2.variant_freq();
 
-                let (left, right) = n1.cmp_pair(n2);
+            let (left, right) = n1.cmp_pair(n2);
 
-                // update current root and current frequency
-                current_root = Root::new(new_freq, left, right);
-                current_freq = new_freq;
+            // update current root and current frequency
+            current_root = Root::new(new_freq, left, right);
+            current_freq = new_freq;
 
-                // push the new node back into the priority queue
-                prio_queue.push(Node::Branch(current_root.clone()));
-            }
+            // push the new node back into the priority queue
+            prio_queue.push(Node::Branch(current_root.clone()));
         }
     }
 
@@ -210,6 +237,35 @@ mod test {
         if let (Node::Branch(s1), Node::Branch(s2)) = n1.cmp_pair(n2) {
             assert_eq!(s1.frequency, 10);
             assert_eq!(s2.frequency, 20);
+        }
+    }
+
+    #[test]
+    fn it_generates_correct_encoding() {
+        let mut encodings = HashMap::new();
+
+        let path = String::default();
+
+        let frequency_table: HashMap<char, u32> = HashMap::from(
+            [
+                ('d', 5), 
+                ('b', 3), 
+                ('a', 2),
+                ('e', 1)
+            ]
+        );
+
+        let max_frequency = max_freq(&frequency_table);
+
+        let prio_queue = create_symbol_nodes_prio_queue(&frequency_table);
+
+        let tree = create_huffman_tree(prio_queue, max_frequency);
+
+        generate_encoding(tree, path, &mut encodings);
+
+
+        for (key, encoding) in &encodings {
+            println!("{key} => {encoding}");
         }
     }
 }
