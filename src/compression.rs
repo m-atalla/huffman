@@ -1,24 +1,31 @@
 use std::cmp::Ordering;
 use std::collections::{BinaryHeap, HashMap};
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Root {
     pub left: Box<Option<Node>>,
     pub right: Box<Option<Node>>,
     pub frequency: u32,
 }
 
+
 impl Root {
-    pub fn new(frequency: u32) -> Root {
+    pub fn new(frequency: u32, left: Option<Node>, right: Option<Node>) -> Root {
         Root {
-            left: Box::new(None),
-            right: Box::new(None),
+            left: Box::new(left),
+            right: Box::new(right),
             frequency,
         }
     }
 }
 
-#[derive(Debug, Eq, PartialEq)]
+impl Default for Root {
+    fn default() -> Self {
+        Self::new(0, None, None)
+    }
+}
+
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Symbol {
     pub value: char,
     pub frequency: u32,
@@ -30,7 +37,7 @@ impl Symbol {
     }
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub enum Node {
     Branch(Root),
     Leaf(Symbol),
@@ -39,6 +46,13 @@ pub enum Node {
 impl Node {
     pub fn new_leaf(value: char, frequency: u32) -> Node {
         Node::Leaf(Symbol::new(value, frequency))
+    }
+
+    pub fn variant_freq(&self) -> &u32 {
+        match self {
+            Node::Branch(root) => &root.frequency,
+            Node::Leaf(sym) => &sym.frequency,
+        }
     }
 }
 
@@ -68,7 +82,9 @@ impl PartialOrd for Node {
     }
 }
 
-pub fn create_symbol_nodes(frequency_table: &HashMap<char, u32>) -> BinaryHeap<Node> {
+pub fn create_symbol_nodes_prio_queue(
+    frequency_table: &HashMap<char, u32>
+) -> BinaryHeap<Node> {
     let mut nodes: BinaryHeap<Node> = BinaryHeap::new();
 
     for (&c, &freq) in frequency_table.iter() {
@@ -78,8 +94,33 @@ pub fn create_symbol_nodes(frequency_table: &HashMap<char, u32>) -> BinaryHeap<N
     nodes
 }
 
+pub fn create_huffman_tree(
+    prio_queue: &mut BinaryHeap<Node>,
+    max_freq: u32
+) -> Root {
+    let mut current = Root::default();
+
+    while current.frequency < max_freq {
+        if let Some(n1) = prio_queue.pop() {
+            if let Some(n2) = prio_queue.pop() {
+                let new_freq: u32 = n1.variant_freq() + n2.variant_freq();
+
+                current = Root::new(new_freq, Some(n1), Some(n2));
+
+                prio_queue.push(
+                    Node::Branch(current.clone())
+                );
+            }
+        }
+    }
+
+    current
+}
+
 #[cfg(test)]
 mod test {
+    use crate::max_freq;
+
     use super::*;
 
     #[test]
@@ -88,7 +129,7 @@ mod test {
 
         priority.push(Node::Leaf(Symbol::new('a', 20)));
 
-        priority.push(Node::Branch(Root::new(10)));
+        priority.push(Node::Branch(Root::new(10, None, None)));
 
         match priority.pop().unwrap() {
             Node::Branch(node) => assert_eq!(node.frequency, 10),
@@ -105,14 +146,14 @@ mod test {
     }
 
     #[test]
-    fn create_prio_queue_from_frequency_table() {
+    fn it_creates_prio_queue_from_frequency_table() {
         let frequency_table: HashMap<char, u32> = HashMap::from([
             ('a', 3),
             ('s', 2),
             ('t', 1)
         ]);
 
-        let mut prio_queue = create_symbol_nodes(&frequency_table);
+        let mut prio_queue = create_symbol_nodes_prio_queue(&frequency_table);
 
         // pop (dequeue) should give the minimum value
         match prio_queue.pop().unwrap() {
@@ -122,5 +163,21 @@ mod test {
             ),
             _ => (),
         }
+    }
+
+    #[test]
+    fn it_creates_huffman_tree() {
+        let frequency_table: HashMap<char, u32> = HashMap::from([
+            ('a', 3),
+            ('s', 2),
+            ('t', 1)
+        ]);
+        let max_frequency = max_freq(&frequency_table);
+
+        let mut prio_queue = create_symbol_nodes_prio_queue(&frequency_table);
+
+        let tree = create_huffman_tree(&mut prio_queue, max_frequency);
+
+        assert_eq!(tree.frequency, max_frequency);
     }
 }
