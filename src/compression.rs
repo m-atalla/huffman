@@ -8,7 +8,6 @@ pub struct Root {
     pub frequency: u32,
 }
 
-
 impl Root {
     pub fn new(frequency: u32, left: Option<Node>, right: Option<Node>) -> Root {
         Root {
@@ -82,9 +81,7 @@ impl PartialOrd for Node {
     }
 }
 
-pub fn create_symbol_nodes_prio_queue(
-    frequency_table: &HashMap<char, u32>
-) -> BinaryHeap<Node> {
+pub fn create_symbol_nodes_prio_queue(frequency_table: &HashMap<char, u32>) -> BinaryHeap<Node> {
     let mut nodes: BinaryHeap<Node> = BinaryHeap::new();
 
     for (&c, &freq) in frequency_table.iter() {
@@ -94,27 +91,36 @@ pub fn create_symbol_nodes_prio_queue(
     nodes
 }
 
-pub fn create_huffman_tree(
-    prio_queue: &mut BinaryHeap<Node>,
-    max_freq: u32
-) -> Root {
-    let mut current = Root::default();
+pub fn create_huffman_tree(mut prio_queue: BinaryHeap<Node>, max_freq: u32) -> Root {
+    let mut current_freq = 0u32;
+    let mut current_root = Root::default();
 
-    while current.frequency < max_freq {
+    // an empty priority queue should return
+    // the default (empty) root
+    if prio_queue.len() == 0 {
+        return current_root;
+    }
+
+    while current_freq < max_freq {
         if let Some(n1) = prio_queue.pop() {
             if let Some(n2) = prio_queue.pop() {
+                // new branch frequency is the sum of
                 let new_freq: u32 = n1.variant_freq() + n2.variant_freq();
 
-                current = Root::new(new_freq, Some(n1), Some(n2));
+                // update current root and current frequency
+                current_root = Root::new(new_freq, Some(n1), Some(n2));
+                current_freq = new_freq;
 
-                prio_queue.push(
-                    Node::Branch(current.clone())
-                );
+                // push the new node back into the priority queue
+                prio_queue.push(Node::Branch(current_root.clone()));
             }
         }
     }
 
-    current
+    // at this point prio_queue will be dropped
+    // since this function takes ownership of the queue
+    // and will be cleaned automatically as it goes out of scope.
+    current_root
 }
 
 #[cfg(test)]
@@ -147,36 +153,25 @@ mod test {
 
     #[test]
     fn it_creates_prio_queue_from_frequency_table() {
-        let frequency_table: HashMap<char, u32> = HashMap::from([
-            ('a', 3),
-            ('s', 2),
-            ('t', 1)
-        ]);
+        let frequency_table: HashMap<char, u32> = HashMap::from([('a', 3), ('s', 2), ('t', 1)]);
 
         let mut prio_queue = create_symbol_nodes_prio_queue(&frequency_table);
 
         // pop (dequeue) should give the minimum value
         match prio_queue.pop().unwrap() {
-            Node::Leaf(sym) => assert_eq!(
-                sym.frequency,
-                *frequency_table.get(&'t').unwrap()
-            ),
+            Node::Leaf(sym) => assert_eq!(sym.frequency, *frequency_table.get(&'t').unwrap()),
             _ => (),
         }
     }
 
     #[test]
     fn it_creates_huffman_tree() {
-        let frequency_table: HashMap<char, u32> = HashMap::from([
-            ('a', 3),
-            ('s', 2),
-            ('t', 1)
-        ]);
+        let frequency_table: HashMap<char, u32> = HashMap::from([('a', 3), ('s', 2), ('t', 1)]);
         let max_frequency = max_freq(&frequency_table);
 
-        let mut prio_queue = create_symbol_nodes_prio_queue(&frequency_table);
+        let prio_queue = create_symbol_nodes_prio_queue(&frequency_table);
 
-        let tree = create_huffman_tree(&mut prio_queue, max_frequency);
+        let tree = create_huffman_tree(prio_queue, max_frequency);
 
         assert_eq!(tree.frequency, max_frequency);
     }
