@@ -45,6 +45,10 @@ fn frequency(contents: &str) -> HashMap<char, u32> {
     frequency_table
 }
 
+pub fn max_freq(frequency_table: &HashMap<char, u32>) -> u32 {
+    frequency_table.values().sum()
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -57,5 +61,14 @@ mod test {
             HashMap::from([('h', 1), ('u', 1), ('f', 2), ('m', 1), ('a', 1), ('n', 1)]);
 
         assert_eq!(freq_table, expected_freq);
+    }
+
+    #[test]
+    fn it_calculates_the_maximum_frequency() {
+        let freq_table = frequency("abcdefffgggabc");
+
+        let max = max_freq(&freq_table);
+
+        assert_eq!(max, 14);
     }
 }
