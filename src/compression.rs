@@ -1,6 +1,8 @@
 use std::cmp::Ordering;
 use std::collections::{BinaryHeap, HashMap};
 
+use crate::max_freq;
+
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Root {
     pub left: Option<Box<Node>>, // 0
@@ -17,6 +19,7 @@ impl Root {
         }
     }
 
+    #[inline]
     pub fn children(self) -> (Option<Box<Node>> , Option<Box<Node>>){
         (self.left, self.right)
     }
@@ -128,7 +131,7 @@ impl PartialOrd for Node {
     }
 }
 
-pub fn create_symbol_nodes_prio_queue(frequency_table: &HashMap<char, u32>) -> BinaryHeap<Node> {
+pub fn init_symbol_nodes_prio_queue(frequency_table: &HashMap<char, u32>) -> BinaryHeap<Node> {
     let mut nodes: BinaryHeap<Node> = BinaryHeap::new();
 
     for (&c, &freq) in frequency_table.iter() {
@@ -170,6 +173,22 @@ pub fn create_huffman_tree(mut prio_queue: BinaryHeap<Node>, max_freq: u32) -> R
     current_root
 }
 
+pub fn generate_encoding_table(frequency_table: &HashMap<char, u32>) -> HashMap<char, String>{
+    let path = String::default();
+    let mut encoding_table = HashMap::new();
+
+    let max_frequency = max_freq(&frequency_table);
+
+    let prio_queue = init_symbol_nodes_prio_queue(&frequency_table);
+
+    let tree = create_huffman_tree(prio_queue, max_frequency);
+
+    generate_encoding(tree, path, &mut encoding_table);
+
+    encoding_table
+}
+
+
 #[cfg(test)]
 mod test {
     use crate::max_freq;
@@ -202,7 +221,7 @@ mod test {
     fn it_creates_prio_queue_from_frequency_table() {
         let frequency_table: HashMap<char, u32> = HashMap::from([('a', 3), ('s', 2), ('t', 1)]);
 
-        let mut prio_queue = create_symbol_nodes_prio_queue(&frequency_table);
+        let mut prio_queue = init_symbol_nodes_prio_queue(&frequency_table);
 
         // pop (dequeue) should give the minimum value
         match prio_queue.pop().unwrap() {
@@ -216,7 +235,7 @@ mod test {
         let frequency_table: HashMap<char, u32> = HashMap::from([('a', 3), ('s', 2), ('t', 1)]);
         let max_frequency = max_freq(&frequency_table);
 
-        let prio_queue = create_symbol_nodes_prio_queue(&frequency_table);
+        let prio_queue = init_symbol_nodes_prio_queue(&frequency_table);
 
         let tree = create_huffman_tree(prio_queue, max_frequency);
 
@@ -242,30 +261,18 @@ mod test {
 
     #[test]
     fn it_generates_correct_encoding() {
-        let mut encodings = HashMap::new();
+        let frequency_table: HashMap<char, u32> = HashMap::from([
+            ('d', 5), 
+            ('b', 3), 
+            ('a', 2),
+            ('e', 1)
+        ]);
+        
+        let encoding_table = generate_encoding_table(&frequency_table);
 
-        let path = String::default();
-
-        let frequency_table: HashMap<char, u32> = HashMap::from(
-            [
-                ('d', 5), 
-                ('b', 3), 
-                ('a', 2),
-                ('e', 1)
-            ]
-        );
-
-        let max_frequency = max_freq(&frequency_table);
-
-        let prio_queue = create_symbol_nodes_prio_queue(&frequency_table);
-
-        let tree = create_huffman_tree(prio_queue, max_frequency);
-
-        generate_encoding(tree, path, &mut encodings);
-
-
-        for (key, encoding) in &encodings {
-            println!("{key} => {encoding}");
-        }
+        match encoding_table.get(&'d') {
+            Some(code) => assert_eq!(*code, "0".to_string()),
+            None => panic!("Expected an code string got `None`!")
+        };
     }
 }
