@@ -1,8 +1,6 @@
 use std::cmp::Ordering;
 use std::collections::{BinaryHeap, HashMap};
 
-use crate::max_freq;
-
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Root {
     pub left: Option<Box<Node>>, // 0
@@ -141,8 +139,7 @@ pub fn init_symbol_nodes_prio_queue(frequency_table: &HashMap<char, u32>) -> Bin
     nodes
 }
 
-pub fn create_huffman_tree(mut prio_queue: BinaryHeap<Node>, max_freq: u32) -> Root {
-    let mut current_freq = 0u32;
+pub fn create_huffman_tree(mut prio_queue: BinaryHeap<Node>) -> Root {
     let mut current_root = Root::default();
 
     // an empty priority queue should return
@@ -151,7 +148,7 @@ pub fn create_huffman_tree(mut prio_queue: BinaryHeap<Node>, max_freq: u32) -> R
         return current_root;
     }
 
-    while current_freq < max_freq {
+    while prio_queue.len() > 1 {
         if let (Some(n1), Some(n2)) = (prio_queue.pop(), prio_queue.pop()) {
             // new branch frequency
             let new_freq: u32 = n1.variant_freq() + n2.variant_freq();
@@ -160,7 +157,6 @@ pub fn create_huffman_tree(mut prio_queue: BinaryHeap<Node>, max_freq: u32) -> R
 
             // update current root and current frequency
             current_root = Root::new(new_freq, left, right);
-            current_freq = new_freq;
 
             // push the new node back into the priority queue
             prio_queue.push(Node::Branch(current_root.clone()));
@@ -177,11 +173,9 @@ pub fn generate_encoding_table(frequency_table: &HashMap<char, u32>) -> HashMap<
     let path = String::default();
     let mut encoding_table = HashMap::new();
 
-    let max_frequency = max_freq(&frequency_table);
-
     let prio_queue = init_symbol_nodes_prio_queue(&frequency_table);
 
-    let tree = create_huffman_tree(prio_queue, max_frequency);
+    let tree = create_huffman_tree(prio_queue);
 
     generate_encoding(tree, path, &mut encoding_table);
 
@@ -191,8 +185,6 @@ pub fn generate_encoding_table(frequency_table: &HashMap<char, u32>) -> HashMap<
 
 #[cfg(test)]
 mod test {
-    use crate::max_freq;
-
     use super::*;
 
     #[test]
@@ -233,12 +225,15 @@ mod test {
     #[test]
     fn it_creates_huffman_tree() {
         let frequency_table: HashMap<char, u32> = HashMap::from([('a', 3), ('s', 2), ('t', 1)]);
-        let max_frequency = max_freq(&frequency_table);
 
         let prio_queue = init_symbol_nodes_prio_queue(&frequency_table);
 
-        let tree = create_huffman_tree(prio_queue, max_frequency);
+        let tree = create_huffman_tree(prio_queue);
 
+        let max_frequency = frequency_table.values().sum();
+
+        // the root of the generated huffman tree should be equal to the sum of values
+        // in the huffman table.
         assert_eq!(tree.frequency, max_frequency);
     }
 
