@@ -244,11 +244,11 @@ mod test {
 
         let tree = create_huffman_tree(prio_queue);
 
-        let max_frequency = frequency_table.values().sum();
+        let max_frequency: u32 = frequency_table.values().sum();
 
         // the root of the generated huffman tree should be equal to the sum of values
         // in the huffman table.
-        assert_eq!(tree.frequency, max_frequency);
+        assert_eq!(*tree.variant_freq(), max_frequency);
     }
 
     #[test]
