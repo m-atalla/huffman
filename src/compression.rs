@@ -1,63 +1,40 @@
 use std::cmp::Ordering;
 use std::collections::{BinaryHeap, HashMap};
 
+
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Root {
-    pub left: Option<Box<Node>>, // 0
-    pub right: Option<Box<Node>>, // 1
+    pub left: Box<Node>, // 0
+    pub right: Box<Node>, // 1
     pub frequency: u32,
 }
 
 impl Root {
     pub fn new(frequency: u32, left: Node, right: Node) -> Root {
         Root {
-            left: Some(Box::new(left)),
-            right: Some(Box::new(right)),
+            left: Box::new(left),
+            right: Box::new(right),
             frequency,
         }
     }
 
     #[inline]
-    pub fn children(self) -> (Option<Box<Node>> , Option<Box<Node>>){
+    pub fn children(self) -> (Box<Node> , Box<Node>){
         (self.left, self.right)
     }
 
-}
-
-/// recusively traverses the huffman tree
-/// with an 'encoding_path' string that is updated
-/// upon going left appends a `0` and going right appends a `1`
-/// till it reaches a leaf node at this point, it adds a new entry 
-/// to the `encoding_table` **the key** is the character at the current node 
-/// and **the value** is the 'encoding_path' to the current node.
-pub fn generate_encoding(tree: Root, path: String, mut encoding_table: &mut HashMap<char, String>) {
-    if let (Some(left), Some(right)) = tree.children() {
-        // TODO: change the following matches to a macro as well?
-        match *left {
-            Node::Branch(sub_tree) => generate_encoding(sub_tree, path.clone() + "0", &mut encoding_table), 
-            Node::Leaf(sym) => {
-                encoding_table.insert(sym.value, path.clone() + "0");
-            }
-        }
-
-        match *right {
-            Node::Branch(sub_tree) => generate_encoding(sub_tree, path.clone() + "1", &mut encoding_table), 
-            Node::Leaf(sym) => {
-                encoding_table.insert(sym.value, path.clone() + "1");
-            }
-        }
-    }
 }
 
 impl Default for Root {
     fn default() -> Self {
         Self {
             frequency: 0,
-            left: None,
-            right: None,
+            left: Box::new(Node::Leaf(Symbol::default())),
+            right: Box::new(Node::Leaf(Symbol::default())),
         }
     }
 }
+
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Symbol {
@@ -68,6 +45,15 @@ pub struct Symbol {
 impl Symbol {
     pub fn new(value: char, frequency: u32) -> Symbol {
         Symbol { value, frequency }
+    }
+}
+
+impl Default for Symbol {
+    fn default() -> Self {
+        Self {
+            frequency: 0,
+            value: '_'
+        }
     }
 }
 
@@ -99,6 +85,36 @@ impl Node {
             (self, other)
         } else {
             (other, self)
+        }
+    }
+
+    /// recusively traverses the huffman tree
+    /// with an 'encoding_path' string that is updated
+    /// upon going left appends a `0` and going right appends a `1`
+    /// till it reaches a leaf node at this point, it adds a new entry 
+    /// to the `encoding_table` **the key** is the character at the current node 
+    /// and **the value** is the 'encoding_path' to the current node.
+    pub fn generate_encoding(&self, path: String, mut encoding_table: &mut HashMap<char, String>) {
+        match self {
+            Node::Branch(root) => {
+                // TODO: change the following matches to a macro as well?
+                match &*root.left {
+                    Node::Leaf(sym) => {
+                        encoding_table.insert(sym.value, path.clone() + "0");
+                    },
+                    sub_tree => sub_tree.generate_encoding(path.clone() + "0", &mut encoding_table), 
+                }
+
+                match &*root.right {
+                    Node::Leaf(sym) => {
+                        encoding_table.insert(sym.value, path.clone() + "1");
+                    }
+                    sub_tree => sub_tree.generate_encoding(path.clone() + "1", &mut encoding_table), 
+                }
+            }
+            Node::Leaf(_) => {
+                panic!("Expected a `Node::Branch` variant got `Node::Leaf`");
+            }
         }
     }
 }
@@ -139,13 +155,9 @@ pub fn init_symbol_nodes_prio_queue(frequency_table: &HashMap<char, u32>) -> Bin
     nodes
 }
 
-pub fn create_huffman_tree(mut prio_queue: BinaryHeap<Node>) -> Root {
-    let mut current_root = Root::default();
-
-    // an empty priority queue should return
-    // the default (empty) root
+pub fn create_huffman_tree(mut prio_queue: BinaryHeap<Node>) -> Node {
     if prio_queue.len() == 0 {
-        return current_root;
+        panic!("Empty priority queue..aborting");
     }
 
     while prio_queue.len() > 1 {
@@ -155,29 +167,31 @@ pub fn create_huffman_tree(mut prio_queue: BinaryHeap<Node>) -> Root {
 
             let (left, right) = n1.cmp_pair(n2);
 
-            // update current root and current frequency
-            current_root = Root::new(new_freq, left, right);
-
             // push the new node back into the priority queue
-            prio_queue.push(Node::Branch(current_root.clone()));
+            prio_queue.push(
+                Node::Branch(
+                    Root::new(new_freq, left, right)
+                )
+            );
         }
     }
 
     // at this point prio_queue will be dropped
     // since this function takes ownership of the queue
     // and will be cleaned automatically as it goes out of scope.
-    current_root
+    prio_queue.pop().unwrap()
 }
 
 pub fn generate_encoding_table(frequency_table: &HashMap<char, u32>) -> HashMap<char, String>{
     let path = String::default();
+
     let mut encoding_table = HashMap::new();
 
     let prio_queue = init_symbol_nodes_prio_queue(&frequency_table);
 
     let tree = create_huffman_tree(prio_queue);
 
-    generate_encoding(tree, path, &mut encoding_table);
+    tree.generate_encoding(path, &mut encoding_table);
 
     encoding_table
 }
