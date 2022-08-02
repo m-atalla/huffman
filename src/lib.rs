@@ -1,7 +1,12 @@
 use std::collections::HashMap;
-use std::{error::Error, fs};
+use std::error::Error;
+use std::fs::{self, File};
+use std::io::Write;
+use std::num::ParseIntError;
+use std::path::Path;
 
-pub mod compression;
+pub mod encode;
+pub mod decode;
 
 pub struct Config {
     pub filename: String,
