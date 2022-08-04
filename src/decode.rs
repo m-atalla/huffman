@@ -189,7 +189,6 @@ enum Node {
 }
 
 impl Node {
-    #[cfg(test)]
     pub fn branch(self) -> Option<Root> {
         match self {
             Node::Branch(root) => Some(root),
