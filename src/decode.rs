@@ -3,6 +3,40 @@ use std::io::{BufReader, BufRead, Error};
 use std::fs::File;
 use std::path::Path;
 
+
+
+macro_rules! some_boxed_leaf {
+    ($e:expr) => {
+        Some(Box::new(Node::Leaf($e)))
+    }
+}
+macro_rules! some_boxed_branch {
+    ($e:expr) => {
+        Some(Box::new(Node::Branch($e)))
+    };
+}
+
+macro_rules! extend {
+    ($root:expr, $code:expr, $symbol_value:expr) => {
+        match &$root {
+            Some(tree) => {
+                let sub_root = tree.clone().branch().unwrap_or_else(||
+                    panic!("Failed to extend branch out of sub tree {:?}", tree)
+                );
+
+                $root = some_boxed_branch!(
+                    Root::new_traverse(Some(sub_root), &$code[1..], $symbol_value)
+                );
+            },
+            None => {
+                $root = some_boxed_branch!(
+                    Root::new_traverse(None, &$code[1..], $symbol_value)
+                );
+            }
+        }
+    };
+}
+
 #[derive(Debug)]
 pub struct Header {
     pub entry_count: u8,
@@ -95,45 +129,39 @@ impl Default for Root {
 
 impl Root {
     pub fn from_table(table: &HashMap<char, String>) -> Self {
-        
         table.iter().fold(Root::default(), |acc, (key, value)| { 
             Root::new_traverse(Some(acc), value, *key) 
         })
     }
+
+    /// Reconstructs the huffman tree through traversal of header code strings
+    /// # Panics
+    /// - On getting an invalid code other than a `0` or `1`
+    /// - On getting an empty string.
+    /// - On overwriting node leaf variant.
     pub fn new_traverse(bootstrap: Option<Root>, code: &str, symbol_value: char) -> Self {
         // Use the bootstrap root if it's provided.
-        let mut root = if let Some(sub_tree) = bootstrap { 
-            sub_tree 
+        let mut root = if let Some(_root) = bootstrap { 
+            _root 
         } else { 
             Self::default()
         };
 
 
         // consume string slice until reaching the last char
-        // (stoppping condition)
+        // (base condition)
         if code.len() == 1 {
             // its safe to unwrap here already explicitly
             // checked that the str slice has a single character
             let ch = code.chars().nth(0).unwrap();
 
             match ch {
-                '1' => {
-                    root.right = Some(
-                        Box::new(
-                            Node::Leaf(
-                                Symbol::new(symbol_value))
-                        )
-                    )
-                },
-                '0' => root.left = Some(
-                    Box::new(
-                        Node::Leaf(
-                            Symbol::new(symbol_value)
-                        )
-                    )
-                ),
-                other_char => panic!("Invalid encoding expected a `0` or `1`, got `{other_char}`")
-            }
+                '1' => root.right = some_boxed_leaf!(Symbol::new(symbol_value)),
+                '0' => root.left = some_boxed_leaf!(Symbol::new(symbol_value)),
+                other_char => panic!(
+                    "Invalid encoding expected a `0` or `1`, got `{other_char}`"
+                )
+            };
 
             return root;
         } 
@@ -141,45 +169,18 @@ impl Root {
         match code.chars().next() {
             Some(ch) => {
                 match  ch {
-                    '1' => Root::direct(&mut root.right, code, symbol_value),
-                    '0' => Root::direct(&mut root.left, code, symbol_value),
+                    '1' => extend!(root.right, code, symbol_value),
+                    '0' => extend!(root.left, code, symbol_value),
                     other_char => panic!("Invalid encoding expected a `0` or `1`, got `{other_char}`")
                 }
             },
-            None => { }
+            None => panic!("Failed to traverse tree with, got empty code string.")
         };
 
         root
     } 
-
-    #[inline]
-    fn direct(root: &mut Option<Box<Node>>, code: &str, symbol_value: char) {
-        match &*root {
-            Some(tree) => {
-                *root = Some(
-                    if let Node::Branch(sub_root) = &**tree { 
-                        Box::new(
-                            Node::Branch(
-                                Root::new_traverse(Some(sub_root.clone()), &code[1..], symbol_value)
-                            )
-                        )
-                    } else { 
-                        Box::new(Node::Branch(Root::default()))
-                    }
-                )
-            },
-            None => {
-                *root = Some(
-                    Box::new(
-                        Node::Branch(
-                            Root::new_traverse(None, &code[1..], symbol_value)
-                        )
-                    )
-                )
-            }
-        }
-    }
 }
+
 
 #[derive(Debug, Clone)]
 enum Node {
