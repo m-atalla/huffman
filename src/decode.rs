@@ -44,7 +44,7 @@ pub struct Header {
 }
 
 impl Header {
-    /// Create header instance from specified Path 
+    /// Create header instance from Path 
     /// # Panics 
     /// - The generated huffman table doesn't have as many entries as declared in the first line
     pub fn from<P: AsRef<Path>>(path: P) -> Result<Self, Error> {
@@ -88,6 +88,7 @@ impl Header {
             table
         })
     }
+
     pub fn parse_huffman_table(raw: &str) -> HashMap<char, String> {
         let mut table = HashMap::new();
         for line in raw.lines() {
@@ -197,6 +198,7 @@ impl Node {
     }
 
     #[cfg(test)]
+    // used only for testing atm.
     pub fn leaf(self) -> Option<Symbol> {
         match self {
             Node::Leaf(leaf) => Some(leaf),
