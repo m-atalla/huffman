@@ -226,7 +226,7 @@ mod test {
 
     #[test]
     fn it_parses_huffman_table() {
-        let table_str = String::from("a:01\nc:001");
+        let table_str = String::from("a01\nc001");
         let table = Header::parse_huffman_table(&table_str);
         assert_eq!(table.get(&'a').unwrap(), "01");
         assert_eq!(table.get(&'c').unwrap(), "001");
@@ -234,7 +234,7 @@ mod test {
 
     #[test]
     fn huffman_table_parser_handles_newlines() {
-        let table_str = String::from("\\n:01\n");
+        let table_str = String::from("\\n01\n");
 
         let table = Header::parse_huffman_table(&table_str);
 
@@ -243,9 +243,11 @@ mod test {
 
     #[test]
     fn reconstruct_huffman_from_table() {
-        let table_str = String::from("x:0\ny:11\nz:10");
-
-        let table = Header::parse_huffman_table(&table_str);
+        let table = HashMap::from([
+            ('x', "0".to_string()),
+            ('y', "11".to_string()),
+            ('z', "10".to_string()),
+        ]);
 
         let tree = Root::from_table(&table);
 
@@ -277,9 +279,7 @@ mod test {
             .value;
 
         assert_eq!(y, 'y');
-
         assert_eq!(z, 'z');
-
         assert_eq!(x, 'x');
     }
 }
