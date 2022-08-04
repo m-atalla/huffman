@@ -101,9 +101,9 @@ impl Header {
             let code = if key == '\n' {
                 // Since new lines are escaped by adding an extra escape character..
                 // actual code value start is shifted one index
-                String::from(&line[3..])
-            } else {
                 String::from(&line[2..])
+            } else {
+                String::from(&line[1..])
             };
 
             table.insert(key, code);
