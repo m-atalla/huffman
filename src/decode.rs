@@ -208,7 +208,7 @@ impl Node {
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 struct Symbol {
-    value: char
+    pub value: char
 }
 
 impl Symbol {
