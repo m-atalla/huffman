@@ -8,10 +8,8 @@ fn main() {
         process::exit(1);
     });
 
-    println!("file name = {}", config.filename);
-
-    if let Err(e) = huffman::run(config) {
-        eprintln!("Compression error: {}", e);
+    if let Err(e) = huffman::run(&config) {
+        eprintln!("{} error: {}", config.mode, e);
 
         process::exit(1);
     }
