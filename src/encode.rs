@@ -182,7 +182,9 @@ pub fn create_huffman_tree(mut prio_queue: BinaryHeap<Node>) -> Node {
     prio_queue.pop().unwrap()
 }
 
-pub fn generate_encoding_table(frequency_table: &HashMap<char, u32>) -> HashMap<char, String>{
+pub fn generate_encoding_table(contents: &str) -> HashMap<char, String>{
+    let frequency_table = init_frequency_table(&contents);
+
     let path = String::default();
 
     let mut encoding_table = HashMap::new();
@@ -196,10 +198,32 @@ pub fn generate_encoding_table(frequency_table: &HashMap<char, u32>) -> HashMap<
     encoding_table
 }
 
+// Builds the frequency table for all of the characters of the given
+// contents string slice.
+fn init_frequency_table(contents: &str) -> HashMap<char, u32> {
+    let mut frequency_table = HashMap::new();
+    for sym in contents.chars() {
+        // Initializes table entry if doesn't exist
+        // dereferences the entry to increment it by one for each occurance
+        *frequency_table.entry(sym).or_insert(0) += 1;
+    }
+
+    frequency_table
+}
 
 #[cfg(test)]
 mod test {
     use super::*;
+
+    #[test]
+    fn it_generates_frequency_table() {
+        let freq_table = init_frequency_table("huffman");
+
+        let expected_freq =
+            HashMap::from([('h', 1), ('u', 1), ('f', 2), ('m', 1), ('a', 1), ('n', 1)]);
+
+        assert_eq!(freq_table, expected_freq);
+    }
 
     #[test]
     fn priority_queue_impl_dequeue_order() {
@@ -270,14 +294,9 @@ mod test {
 
     #[test]
     fn it_generates_correct_encoding() {
-        let frequency_table: HashMap<char, u32> = HashMap::from([
-            ('d', 5), 
-            ('b', 3), 
-            ('a', 2),
-            ('e', 1)
-        ]);
+        let txt = "dddddbbbaae";
         
-        let encoding_table = generate_encoding_table(&frequency_table);
+        let encoding_table = generate_encoding_table(txt);
 
         match encoding_table.get(&'d') {
             Some(code) => assert_eq!(*code, "0".to_string()),
