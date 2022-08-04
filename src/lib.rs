@@ -91,28 +91,40 @@ pub fn table_bits(table: &HashMap<char, String>) -> Result<HashMap<char, u8>, Pa
     Ok(new_map)
 }
 
+fn create_output_file(config: &Config) -> Result<PathBuf, Box<dyn Error>> {
+    // setup path
+    let out_filename = match config.output_file.clone() {
+        Some(name) => name,
+        None => {
+            config.input_file.clone() + ".o"
+        },
+    };
+
+    let path_buf = PathBuf::from(&out_filename);
+
+    if !path_buf.exists() {
+        File::create(&path_buf)?;
+    }
+
+    Ok(path_buf)
+}
+
 fn compress(config: &Config) -> Result<(), Box<dyn Error>> {
     let contents = fs::read_to_string(config.input_file.clone())?;
 
     let table = encode::generate_encoding_table(&contents);
-    // setup path
-    let out_filename = match config.output_file.clone() {
-        Some(output) => output,
-        None => config.input_file.clone() + ".o",
-    };
 
-    let out_path = Path::new(&out_filename);
 
-    if !out_path.exists() {
-        File::create(out_path)?;
-    }
+    let out_path = create_output_file(&config)?;
 
     let mut file = fs::OpenOptions::new()
         .write(true)
         .open(out_path)?;
 
     // writing header
-    let mut head_buf = format!("{}\n", table.len()).as_bytes().to_owned();
+    let mut head_buf = format!("{}\n", table.len())
+        .as_bytes()
+        .to_owned();
 
     for (k, v) in &table {
         let line_buf = if *k == '\n' {
