@@ -1,10 +1,9 @@
 use std::collections::HashMap;
 use std::error::Error;
-use std::fmt::Display;
 use std::fs::{self, File};
 use std::io::Write;
 use std::num::ParseIntError;
-use std::path::Path;
+use std::path::PathBuf;
 
 pub mod encode;
 pub mod decode;
@@ -21,7 +20,7 @@ pub enum Mode {
     Decompress
 }
 
-impl Display for Mode {
+impl std::fmt::Display for Mode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Mode::Compress => write!(f, "Compression"),
