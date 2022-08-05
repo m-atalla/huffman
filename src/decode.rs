@@ -198,7 +198,6 @@ impl Node {
     }
 
     #[cfg(test)]
-    // used only for testing atm.
     pub fn leaf(self) -> Option<Symbol> {
         match self {
             Node::Leaf(leaf) => Some(leaf),
@@ -209,7 +208,7 @@ impl Node {
 
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
-struct Symbol {
+pub struct Symbol {
     pub value: char
 }
 
