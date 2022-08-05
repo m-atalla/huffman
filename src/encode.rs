@@ -61,6 +61,17 @@ impl Default for Symbol {
     }
 }
 
+macro_rules! encode_child {
+    ($child_node:expr, $suffix_char: expr, $path:expr, $table:expr) => {
+        match &*$child_node {
+            Node::Leaf(sym) => {
+                $table.insert(sym.value, $path.clone() + $suffix_char);
+            },
+            sub_tree => sub_tree.generate_encoding($path.clone() + $suffix_char, &mut $table), 
+        }
+    };
+}
+
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub enum Node {
     Branch(Root),
@@ -98,26 +109,16 @@ impl Node {
     /// till it reaches a leaf node at this point, it adds a new entry 
     /// to the `encoding_table` **the key** is the character at the current node 
     /// and **the value** is the 'encoding_path' to the current node.
+    /// # Panics:
+    /// - Running into a 'Node Leaf' variant
     pub fn generate_encoding(&self, path: String, mut encoding_table: &mut HashMap<char, String>) {
         match self {
             Node::Branch(root) => {
-                // TODO: change the following matches to a macro as well?
-                match &*root.left {
-                    Node::Leaf(sym) => {
-                        encoding_table.insert(sym.value, path.clone() + "0");
-                    },
-                    sub_tree => sub_tree.generate_encoding(path.clone() + "0", &mut encoding_table), 
-                }
-
-                match &*root.right {
-                    Node::Leaf(sym) => {
-                        encoding_table.insert(sym.value, path.clone() + "1");
-                    }
-                    sub_tree => sub_tree.generate_encoding(path.clone() + "1", &mut encoding_table), 
-                }
+                encode_child!(root.left, "0", path, encoding_table);
+                encode_child!(root.right, "1", path, encoding_table);
             }
             Node::Leaf(_) => {
-                panic!("Expected a `Node::Branch` variant got `Node::Leaf`");
+                panic!("Expected a `Node::Branch` variant got a `Node::Leaf`");
             }
         }
     }
@@ -129,7 +130,6 @@ impl Node {
 /// collection from a **max heap** (the default) to a **min heap** (priority queue)
 impl Ord for Node {
     fn cmp(&self, other: &Self) -> Ordering {
-        // TODO: maybe the following patterns/expressions should be replaced with a macro?
         match self {
             Node::Branch(node) => match other {
                 Node::Branch(other_node) => other_node.frequency.cmp(&node.frequency),
