@@ -58,7 +58,7 @@ impl Config {
                     config.output_file = match args.next() {
                         Some(param) => {
                             if param.starts_with('-') {
-                                panic!("Expected filename argument got a flag the flag '{param}' instead.");
+                                panic!("Expected filename argument got the flag '{param}' instead.");
                             }
                             Some(param)
                         },
