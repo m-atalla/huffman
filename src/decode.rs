@@ -357,11 +357,18 @@ mod test {
     }
 
     #[test]
-    fn huffman_tree_decode_traversal() {
+    fn huffman_tree_decode_walk() {
         let tree = basic_tree();
         let step_1 = Root::walk(&tree, '0').branch().unwrap();
         let step_2 = Root::walk(&step_1, '1').branch().unwrap();
         let step_3 = Root::walk(&step_2, '0').leaf().unwrap();
         assert_eq!(step_3.value, 'h');
+    }
+
+    #[test]
+    fn huffman_tree_decode_tread_path() {
+        let tree = basic_tree();
+        let decomp = tread(&tree, "010");
+        assert_eq!(&decomp, "h");
     }
 }
