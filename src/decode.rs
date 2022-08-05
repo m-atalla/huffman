@@ -128,6 +128,21 @@ impl Default for Root {
     }
 }
 
+macro_rules! walk {
+    ($sub_tree:expr) => {
+        match $sub_tree{
+            Some(node) => node.clone(),
+            None => panic!("Invalid code or root was provided.")
+        }
+    };
+}
+
+macro_rules! invalid_code {
+    ($invalid_char:expr) => {
+       panic!("Invalid code expected a `0` or `1`, got `{}`", $invalid_char)
+    };
+}
+
 impl Root {
     pub fn from_table(table: &HashMap<char, String>) -> Self {
         table.iter().fold(Root::default(), |acc, (key, value)| { 
