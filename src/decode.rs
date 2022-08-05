@@ -1,15 +1,122 @@
 use std::collections::HashMap;
-use std::io::{BufReader, BufRead, Error};
+use std::io::{BufReader, BufRead, Error, Write};
 use std::fs::File;
-use std::path::Path;
+use crate::Config;
 
 
+pub fn decompress(config: &Config) -> Result<(), Error>{
+    // Open file and create a buffered reader.
+    let file = File::open(config.get_input_file())?;
+    let mut reader = BufReader::new(file);
+
+    let (entry_count, raw_table) = parse_header(&mut reader)?;
+
+    let reconstructed = Reconst::from_str(entry_count, &raw_table);
+
+    let mut encoded = String::new();
+
+    reader.read_line(&mut encoded)?;
+
+    let decoded = tread(&reconstructed.huffman_tree, &encoded);
+
+    let output_path = config.get_output_file().unwrap();
+
+    let mut output_file = File::create(output_path).unwrap();
+
+    output_file.write_all(decoded.as_bytes()).unwrap();
+
+    Ok(())
+}
+
+fn parse_header(reader: &mut BufReader<File>) -> Result<(u8, String), Error>{
+    let mut raw_table = String::new();
+
+    let mut line = String::new();
+
+    reader.read_line(&mut line)?;
+
+    // remove last byte 0x0A (\n)
+    line.pop();
+
+    let entry_count: u8 = match line.parse() {
+        Ok(count) => count,
+        Err(err) => {
+            panic!(
+                "Invalid file format! \
+                expected first line to be a number, found: `{}`\
+                \nParseIntError: {}",
+                line,
+                err
+            );
+        },
+    };
+
+    for _ in 0..entry_count {
+        let mut buf_line = String::new();
+
+        reader.read_line(&mut buf_line)?;
+
+        raw_table.push_str(&buf_line);
+    }
+
+    Ok((entry_count, raw_table))
+}
+
+#[derive(Debug)]
+pub struct Reconst {
+    pub encoding_table: HashMap<char, String>,
+    pub huffman_tree: Root
+}
+
+impl Reconst {
+    /// Create header instance from Path 
+    /// # Panics 
+    /// - The generated huffman table doesn't have as many entries as declared in the first line
+    pub fn from_str(entry_count: u8, raw_table: &str) -> Self{
+        let encoding_table = Reconst::huffman_table(&raw_table);
+
+        // length of the generated table should be equal to
+        // the header `entry_count`
+        assert!(encoding_table.len() as u8 == entry_count);
+        
+        let huffman_tree = Root::from_table(&encoding_table);
+
+        Self {
+            encoding_table,
+            huffman_tree
+        }
+    }
+
+    pub fn huffman_table(raw: &str) -> HashMap<char, String> {
+        let mut table = HashMap::new();
+        for line in raw.lines() {
+            let key = match line.chars().next() {
+                // Corrects escaped newline character iteraction 
+                // with .lines() iterator
+                Some(k) => if k == '\\' { '\n' } else { k },
+                None => break
+            };
+
+            let code = if key == '\n' {
+                // Since new lines are escaped by adding an extra escape character..
+                // actual code value start is shifted one index
+                String::from(&line[2..])
+            } else {
+                String::from(&line[1..])
+            };
+
+            table.insert(key, code);
+        }
+        table
+    }
+}
 
 macro_rules! some_boxed_leaf {
     ($e:expr) => {
         Some(Box::new(Node::Leaf($e)))
-    }
+    };
 }
+
 macro_rules! some_boxed_branch {
     ($e:expr) => {
         Some(Box::new(Node::Branch($e)))
@@ -35,82 +142,6 @@ macro_rules! extend {
             }
         }
     };
-}
-
-#[derive(Debug)]
-pub struct Header {
-    pub entry_count: u8,
-    pub table: HashMap<char, String>,
-}
-
-impl Header {
-    /// Create header instance from Path 
-    /// # Panics 
-    /// - The generated huffman table doesn't have as many entries as declared in the first line
-    pub fn from<P: AsRef<Path>>(path: P) -> Result<Self, Error> {
-        let file = File::open(path)?;
-        let mut reader = BufReader::new(file);
-        let mut line = String::new();
-        let mut raw_table = String::default();
-
-        reader.read_line(&mut line)?;
-
-        // remove last byte "\n" (0x0A) byte
-        let entry_count = match line[..line.len() -1].parse() {
-            Ok(count) => count,
-            Err(err) => panic!("invalid file format!\nParseIntError: {}", err),
-        };
-
-
-        for _ in 0..entry_count {
-            let mut buf_line = String::new();
-
-            reader.read_line(&mut buf_line).unwrap();
-
-            raw_table.push_str(&buf_line);
-        }
-
-        let table = Header::parse_huffman_table(&raw_table);
-
-        // length of the generated table should be equal to
-        // the header `entry_count`
-        assert!(table.len() as u8 == entry_count);
-        
-        
-        let root = Root::from_table(&table);
-
-        println!("{root:#?}");
-
-
-
-        Ok(Self {
-            entry_count,
-            table
-        })
-    }
-
-    pub fn parse_huffman_table(raw: &str) -> HashMap<char, String> {
-        let mut table = HashMap::new();
-        for line in raw.lines() {
-            let key = match line.chars().next() {
-                // Corrects escaped newline character iteraction 
-                // with .lines() iterator
-                Some(k) => if k == '\\' { '\n' } else { k },
-                None => break
-            };
-
-            let code = if key == '\n' {
-                // Since new lines are escaped by adding an extra escape character..
-                // actual code value start is shifted one index
-                String::from(&line[2..])
-            } else {
-                String::from(&line[1..])
-            };
-
-            table.insert(key, code);
-        }
-        table
-    }
 }
 
 #[derive(Debug, Clone)]
