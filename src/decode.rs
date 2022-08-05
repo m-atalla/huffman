@@ -212,7 +212,7 @@ impl Root {
 
         match code.chars().next() {
             Some(ch) => {
-                match  ch {
+                match ch {
                     '1' => extend!(root.right, code, symbol_value),
                     '0' => extend!(root.left, code, symbol_value),
                     other_char => invalid_code!(other_char) 
@@ -220,7 +220,6 @@ impl Root {
             },
             None => panic!("Failed to traverse tree with, got empty code string.")
         };
-
 
         root
     } 
@@ -277,6 +276,33 @@ impl Symbol {
     }
 }
 
+/// Incrementally walks the huffman tree using the provided code slice
+/// and returns a decoded string.
+/// # Panics:
+/// - `Root::walk` panic conditions
+pub fn tread(huffman_tree: &Root, code_path: &str) -> String {
+    let mut decoded = String::new();
+    let mut walk_root: Option<Root> = None;
+
+    for code in code_path.chars() {
+        let leg = match &walk_root {
+            Some(_leg) => _leg,
+            None => huffman_tree
+        };
+
+        match *Root::walk(leg, code) {
+            Node::Leaf(symbol) => {
+                walk_root = None;
+                decoded.push(symbol.value);
+            },
+            Node::Branch(root) => {
+                walk_root = Some(root)
+            },
+        };
+    }
+
+    decoded
+}
 
 #[cfg(test)]
 mod test {
@@ -285,7 +311,7 @@ mod test {
     #[test]
     fn it_parses_huffman_table() {
         let table_str = String::from("a01\nc001");
-        let table = Header::parse_huffman_table(&table_str);
+        let table = Reconst::huffman_table(&table_str);
         assert_eq!(table.get(&'a').unwrap(), "01");
         assert_eq!(table.get(&'c').unwrap(), "001");
     }
