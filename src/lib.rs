@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::error::Error;
-use std::fs::{self, File};
-use std::io::Write;
+use std::fs::File;
 use std::num::ParseIntError;
 use std::path::PathBuf;
 
@@ -100,7 +99,6 @@ impl Config {
 // to represent bits efficiently
 #[ignore = "dead_code"]
 pub fn table_bits(table: &HashMap<char, String>) -> Result<HashMap<char, u8>, ParseIntError> {
-
     let mut new_map = HashMap::new();
 
     for (k, v) in table.iter() {
@@ -112,52 +110,12 @@ pub fn table_bits(table: &HashMap<char, String>) -> Result<HashMap<char, u8>, Pa
 }
 
 
-fn compress(config: &Config) -> Result<(), Box<dyn Error>> {
-    let contents = fs::read_to_string(config.input_file.clone())?;
-
-    let table = encode::generate_encoding_table(&contents);
-
-    let out_path = config.get_output_file()?;
-
-    let mut file = fs::OpenOptions::new()
-        .write(true)
-        .open(out_path)?;
-
-    // writing header
-    let mut head_buf = format!("{}\n", table.len())
-        .as_bytes()
-        .to_owned();
-
-    for (k, v) in &table {
-        let line_buf = if *k == '\n' {
-            format!("{}{v}\n", "\\n").as_bytes().to_owned()
-        } else {
-            format!("{k}{v}\n").as_bytes().to_owned()
-        };
-
-        head_buf.extend(line_buf);
-    }
-
-    file.write(&head_buf)?;
-
-    for sym in contents.chars() {
-        match table.get(&sym) {
-            Some(bin) => file.write(bin.as_bytes())?,
-            None => continue
-        };
-    }
-
-    Ok(())
-}
 
 pub fn run(config: &Config) -> Result<(), Box<dyn Error>> {
-
     match config.mode {
-        Mode::Compress => compress(&config)?,
-        Mode::Decompress => println!("Decompressing or something lol")
+        Mode::Compress => encode::compress(&config)?,
+        Mode::Decompress => decode::decompress(&config)?,
     }
-    // let header = decode::Header::from(out_path)?;
-    // println!("{header:#?}");
 
     Ok(())
 }
