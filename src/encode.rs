@@ -226,7 +226,7 @@ mod test {
     }
 
     #[test]
-    fn priority_queue_impl_dequeue_order() {
+    fn min_heap_impl() {
         let mut priority = BinaryHeap::new();
 
         priority.push(Node::Leaf(Symbol::new('a', 20)));
