@@ -73,6 +73,26 @@ impl Config {
 
         Ok(config)
     }
+
+    pub fn get_output_file(&self) -> Result<PathBuf, Box<dyn Error + 'static>> {
+        let out_filename = match self.output_file.clone() {
+            Some(name) => name,
+            None => self.input_file.clone() + ".o"
+        };
+
+        let path_buf = PathBuf::from(out_filename);
+
+        if !path_buf.exists() {
+            File::create(&path_buf)?;
+        }
+
+        Ok(path_buf)
+    }
+
+    #[inline(always)]
+    pub fn get_input_file(&self) -> PathBuf {
+        PathBuf::from(&self.input_file)
+    }
 }
 
 // ignored for now...
@@ -91,31 +111,13 @@ pub fn table_bits(table: &HashMap<char, String>) -> Result<HashMap<char, u8>, Pa
     Ok(new_map)
 }
 
-fn create_output_file(config: &Config) -> Result<PathBuf, Box<dyn Error>> {
-    // setup path
-    let out_filename = match config.output_file.clone() {
-        Some(name) => name,
-        None => {
-            config.input_file.clone() + ".o"
-        },
-    };
-
-    let path_buf = PathBuf::from(&out_filename);
-
-    if !path_buf.exists() {
-        File::create(&path_buf)?;
-    }
-
-    Ok(path_buf)
-}
 
 fn compress(config: &Config) -> Result<(), Box<dyn Error>> {
     let contents = fs::read_to_string(config.input_file.clone())?;
 
     let table = encode::generate_encoding_table(&contents);
 
-
-    let out_path = create_output_file(&config)?;
+    let out_path = config.get_output_file()?;
 
     let mut file = fs::OpenOptions::new()
         .write(true)
