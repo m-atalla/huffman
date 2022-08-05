@@ -148,7 +148,6 @@ impl Root {
             Self::default()
         };
 
-
         // consume string slice until reaching the last char
         // (base condition)
         if code.len() == 1 {
@@ -159,9 +158,7 @@ impl Root {
             match ch {
                 '1' => root.right = some_boxed_leaf!(Symbol::new(symbol_value)),
                 '0' => root.left = some_boxed_leaf!(Symbol::new(symbol_value)),
-                other_char => panic!(
-                    "Invalid encoding expected a `0` or `1`, got `{other_char}`"
-                )
+                other_char => invalid_code!(other_char)
             };
 
             return root;
@@ -172,19 +169,33 @@ impl Root {
                 match  ch {
                     '1' => extend!(root.right, code, symbol_value),
                     '0' => extend!(root.left, code, symbol_value),
-                    other_char => panic!("Invalid encoding expected a `0` or `1`, got `{other_char}`")
+                    other_char => invalid_code!(other_char) 
                 }
             },
             None => panic!("Failed to traverse tree with, got empty code string.")
         };
 
+
         root
     } 
+
+
+    /// Incremental tree traversal a tree given a char (code fragment)
+    /// # Panics
+    /// - On receiving a code that isn't a `0` or `1`
+    /// - On providing an empty code slice.
+    /// - On providing an invalid root provided (tree was reconstructed incorrectly).
+    pub fn walk(root: &Root, code_elem: char) -> Box<Node> {
+        match code_elem {
+            '1' => walk!(&root.right),
+            '0' => walk!(&root.left),
+            other_char => invalid_code!(other_char)
+        }
+    }
 }
 
-
 #[derive(Debug, Clone)]
-enum Node {
+pub enum Node {
     Branch(Root),
     Leaf(Symbol)
 }
