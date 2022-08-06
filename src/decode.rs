@@ -300,7 +300,6 @@ pub fn tread(huffman_tree: &Root, code_path: BitVec<u8, Lsb0>) -> String {
         match *Root::walk(leg, code) {
             Node::Leaf(symbol) => {
                 walk_root = None;
-                println!("{}", symbol.value);
                 decoded.push(symbol.value);
             },
             Node::Branch(root) => {
