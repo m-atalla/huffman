@@ -29,9 +29,11 @@ fn write_decoded(config: &Config,reader: &mut BufReader<File>, reconst: Reconst)
 
     let output_path = config.get_output_file()?;
 
-    let mut output_file = File::open(output_path)?;
+    let mut output_file = fs::OpenOptions::new()
+        .write(true)
+        .open(output_path)?;
 
-    output_file.write_all(decoded.as_bytes()).unwrap();
+    output_file.write_all(decoded.as_bytes())?;
 
     Ok(())
 }
