@@ -4,6 +4,7 @@ use std::fs;
 use std::io::Write;
 use std::error::Error;
 use crate::Config;
+use bitvec::prelude::*;
 
 
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -62,12 +63,18 @@ impl Default for Symbol {
 }
 
 macro_rules! encode_child {
-    ($child_node:expr, $suffix_char: expr, $path:expr, $table:expr) => {
-        match &*$child_node {
-            Node::Leaf(sym) => {
-                $table.insert(sym.value, $path.clone() + $suffix_char);
-            },
-            sub_tree => sub_tree.generate_encoding($path.clone() + $suffix_char, &mut $table), 
+    ($child_node:expr, $suffix_code: expr, $path:expr, $table:expr) => {
+        {
+            let mut _path_vec = $path.clone(); 
+
+            _path_vec.push($suffix_code);
+
+            match &*$child_node {
+                Node::Leaf(sym) => {
+                    $table.insert(sym.value, _path_vec);
+                },
+                sub_tree => sub_tree.generate_encoding(_path_vec, &mut $table), 
+            };
         }
     };
 }
@@ -111,11 +118,11 @@ impl Node {
     /// and **the value** is the 'encoding_path' to the current node.
     /// # Panics:
     /// - Running into a 'Node Leaf' variant
-    pub fn generate_encoding(&self, path: String, mut encoding_table: &mut HashMap<char, String>) {
+    pub fn generate_encoding(&self, path: BitVec<u8, Msb0>, mut encoding_table: &mut HashMap<char, BitVec<u8, Msb0>>) {
         match self {
             Node::Branch(root) => {
-                encode_child!(root.left, "0", path, encoding_table);
-                encode_child!(root.right, "1", path, encoding_table);
+                encode_child!(root.left, false, path, encoding_table);
+                encode_child!(root.right, true, path, encoding_table);
             }
             Node::Leaf(_) => {
                 panic!("Expected a `Node::Branch` variant got a `Node::Leaf`");
@@ -186,10 +193,10 @@ pub fn create_huffman_tree(mut prio_queue: BinaryHeap<Node>) -> Node {
     prio_queue.pop().unwrap()
 }
 
-pub fn generate_encoding_table(contents: &str) -> HashMap<char, String>{
+pub fn generate_encoding_table(contents: &str) -> HashMap<char, BitVec<u8, Msb0>>{
     let frequency_table = init_frequency_table(&contents);
 
-    let path = String::default();
+    let path = bitvec!(u8, Msb0;);
 
     let mut encoding_table = HashMap::new();
 
@@ -227,30 +234,58 @@ pub fn compress(config: &Config) -> Result<(), Box<dyn Error>> {
         .open(out_path)?;
 
     // writing header
-    let mut head_buf = format!("{}\n", table.len())
+    let head_buf = format!("{}\n", table.len())
         .as_bytes()
         .to_owned();
 
-    for (k, v) in &table {
-        let line_buf = if *k == '\n' {
-            format!("{}{v}\n", "\\n").as_bytes().to_owned()
-        } else {
-            format!("{k}{v}\n").as_bytes().to_owned()
-        };
-
-        head_buf.extend(line_buf);
-    }
-
     file.write(&head_buf)?;
 
+
+    let mut table_buf = Vec::new();
+
+    for (symbol, bits) in &table {
+
+        let code = fmt_bitvec(bits);
+
+        let line_buf = if *symbol == '\n' {
+            format!("{}{}\n", "\\n", code).as_bytes().to_owned()
+        } else {
+            format!("{}{}\n", symbol, code).as_bytes().to_owned()
+        };
+
+        table_buf.extend(line_buf);
+    }
+
+    file.write(&table_buf)?;
+
+
+    let mut bit_vec_buff = bitvec!();
+    let mut vec_buf = vec![];
     for sym in contents.chars() {
         match table.get(&sym) {
-            Some(bin) => file.write(bin.as_bytes())?,
+            Some(bin) => bit_vec_buff.extend(bin),
             None => continue
         };
     }
 
+    for chunk in bit_vec_buff.chunks(8) {
+        vec_buf.push(chunk.load::<u8>());
+    }
+    file.write_all(&vec_buf)?;
+
     Ok(())
+}
+
+fn fmt_bitvec(bits: &BitSlice<u8, Msb0>) -> String {
+    let mut code = String::new();
+    for bit in bits.iter().by_vals() {
+        match bit {
+            true => code.push('1'),
+            false => code.push('0')
+        }
+    }
+
+    code
 }
 
 #[cfg(test)]
@@ -340,9 +375,8 @@ mod test {
         
         let encoding_table = generate_encoding_table(txt);
 
-        match encoding_table.get(&'d') {
-            Some(code) => assert_eq!(*code, "0".to_string()),
-            None => panic!("Expected an code string got `None`!")
-        };
+        let code = encoding_table.get(&'d').unwrap();
+
+        assert_eq!(code, &bitvec![u8, Msb0; 0]);
     }
 }
