@@ -95,23 +95,6 @@ impl Config {
     }
 }
 
-// ignored for now...
-// need some sort of a "BitWriter" implementation
-// to represent bits efficiently
-#[ignore = "dead_code"]
-pub fn table_bits(table: &HashMap<char, String>) -> Result<HashMap<char, u8>, ParseIntError> {
-    let mut new_map = HashMap::new();
-
-    for (k, v) in table.iter() {
-        let bin = i8::from_str_radix(v, 2)?;
-        new_map.insert(*k, bin as u8);
-    }
-
-    Ok(new_map)
-}
-
-
-
 pub fn run(config: &Config) -> Result<(), Box<dyn Error>> {
     match config.mode {
         Mode::Compress => encode::compress(&config)?,
