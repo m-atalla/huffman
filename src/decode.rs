@@ -2,33 +2,41 @@ use std::collections::HashMap;
 use std::io::{BufReader, BufRead, Error, Write};
 use std::fs::File;
 use crate::Config;
+use bitvec::prelude::*;
 
 
 pub fn decompress(config: &Config) -> Result<(), Error>{
     // Open file and create a buffered reader.
     let file = File::open(config.get_input_file())?;
+
     let mut reader = BufReader::new(file);
 
-    let (entry_count, raw_table) = parse_header(&mut reader)?;
+    let reconst = parse_header(&mut reader)?;
 
-    let reconstructed = Reconst::from_str(entry_count, &raw_table);
+    write_decoded(config,&mut reader, reconst)?;
 
-    let mut encoded = String::new();
+    Ok(())
+}
 
-    reader.read_line(&mut encoded)?;
+fn write_decoded(config: &Config,reader: &mut BufReader<File>, reconst: Reconst) -> Result<(), Error> {
+    let mut encoded_content: Vec<u8> = Vec::new();
 
-    let decoded = tread(&reconstructed.huffman_tree, &encoded);
+    reader.read_until(b'\0', &mut encoded_content)?;
 
-    let output_path = config.get_output_file().unwrap();
+    let bv: BitVec<u8, Lsb0> = BitVec::from_vec(encoded_content);
 
-    let mut output_file = File::create(output_path).unwrap();
+    let decoded = tread(&reconst.huffman_tree, bv);
+
+    let output_path = config.get_output_file()?;
+
+    let mut output_file = File::open(output_path)?;
 
     output_file.write_all(decoded.as_bytes()).unwrap();
 
     Ok(())
 }
 
-fn parse_header(reader: &mut BufReader<File>) -> Result<(u8, String), Error>{
+fn parse_header(reader: &mut BufReader<File>) -> Result<Reconst, Error>{
     let mut raw_table = String::new();
 
     let mut line = String::new();
@@ -59,7 +67,7 @@ fn parse_header(reader: &mut BufReader<File>) -> Result<(u8, String), Error>{
         raw_table.push_str(&buf_line);
     }
 
-    Ok((entry_count, raw_table))
+    Ok(Reconst::from_str(entry_count, &raw_table))
 }
 
 #[derive(Debug)]
@@ -230,11 +238,10 @@ impl Root {
     /// - On receiving a code that isn't a `0` or `1`
     /// - On providing an empty code slice.
     /// - On providing an invalid root provided (tree was reconstructed incorrectly).
-    pub fn walk(root: &Root, code_elem: char) -> Box<Node> {
+    pub fn walk(root: &Root, code_elem: bool) -> Box<Node> {
         match code_elem {
-            '1' => walk!(&root.right),
-            '0' => walk!(&root.left),
-            other_char => invalid_code!(other_char)
+            true => walk!(&root.right),
+            false => walk!(&root.left),
         }
     }
 }
@@ -280,11 +287,11 @@ impl Symbol {
 /// and returns a decoded string.
 /// # Panics:
 /// - `Root::walk` panic conditions
-pub fn tread(huffman_tree: &Root, code_path: &str) -> String {
+pub fn tread(huffman_tree: &Root, code_path: BitVec<u8, Lsb0>) -> String {
     let mut decoded = String::new();
     let mut walk_root: Option<Root> = None;
 
-    for code in code_path.chars() {
+    for code in code_path {
         let leg = match &walk_root {
             Some(_leg) => _leg,
             None => huffman_tree
@@ -293,6 +300,7 @@ pub fn tread(huffman_tree: &Root, code_path: &str) -> String {
         match *Root::walk(leg, code) {
             Node::Leaf(symbol) => {
                 walk_root = None;
+                println!("{}", symbol.value);
                 decoded.push(symbol.value);
             },
             Node::Branch(root) => {
@@ -359,16 +367,27 @@ mod test {
     #[test]
     fn huffman_tree_decode_walk() {
         let tree = basic_tree();
-        let step_1 = Root::walk(&tree, '0').branch().unwrap();
-        let step_2 = Root::walk(&step_1, '1').branch().unwrap();
-        let step_3 = Root::walk(&step_2, '0').leaf().unwrap();
+        let step_1 = Root::walk(&tree, false).branch().unwrap();
+        let step_2 = Root::walk(&step_1, true).branch().unwrap();
+        let step_3 = Root::walk(&step_2, false).leaf().unwrap();
         assert_eq!(step_3.value, 'h');
+
+        let step_1 = Root::walk(&tree, false).branch().unwrap();
+        let step_2 = Root::walk(&step_1, false).branch().unwrap();
+        let step_3 = Root::walk(&step_2, false).leaf().unwrap();
+        assert_eq!(step_3.value, 'n');
+
+        let step_1 = Root::walk(&tree, true).branch().unwrap();
+        let step_2 = Root::walk(&step_1, false).branch().unwrap();
+        let step_3 = Root::walk(&step_2, true).leaf().unwrap();
+        assert_eq!(step_3.value, '\n');
     }
+    
 
     #[test]
     fn huffman_tree_decode_tread_path() {
         let tree = basic_tree();
-        let decomp = tread(&tree, "010");
+        let decomp = tread(&tree, bitvec![u8, Lsb0; 0,1,0]);
         assert_eq!(&decomp, "h");
     }
 }
