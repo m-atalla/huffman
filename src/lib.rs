@@ -1,8 +1,6 @@
-use std::collections::HashMap;
 use std::error::Error;
 use std::io::Error as IoError;
 use std::fs::File;
-use std::num::ParseIntError;
 use std::path::PathBuf;
 
 pub mod encode;
