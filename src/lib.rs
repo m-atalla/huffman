@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::error::Error;
+use std::io::Error as IoError;
 use std::fs::File;
 use std::num::ParseIntError;
 use std::path::PathBuf;
@@ -73,7 +74,7 @@ impl Config {
         Ok(config)
     }
 
-    pub fn get_output_file(&self) -> Result<PathBuf, Box<dyn Error + 'static>> {
+    pub fn get_output_file(&self) -> Result<PathBuf, IoError> {
         let out_filename = match self.output_file.clone() {
             Some(name) => name,
             None => self.input_file.clone() + ".o"
