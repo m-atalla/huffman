@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::io::{BufReader, BufRead, Error, Write};
-use std::fs::File;
+use std::fs::{self, File};
 use crate::Config;
 use bitvec::prelude::*;
 
