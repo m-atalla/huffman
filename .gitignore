@@ -18,3 +18,6 @@ Cargo.lock
 # output files
 *.o
 *.txt
+
+# perf files
+perf.*
