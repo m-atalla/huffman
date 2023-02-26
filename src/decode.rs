@@ -212,8 +212,8 @@ impl Root {
             let ch = code.chars().nth(0).unwrap();
 
             match ch {
-                '1' => root.right = some_boxed_leaf!(Symbol::new(symbol_value)),
-                '0' => root.left = some_boxed_leaf!(Symbol::new(symbol_value)),
+                '1' => root.right = some_boxed_leaf!(symbol_value),
+                '0' => root.left = some_boxed_leaf!(symbol_value),
                 other_char => invalid_code!(other_char)
             };
 
@@ -251,7 +251,7 @@ impl Root {
 #[derive(Debug, Clone)]
 pub enum Node {
     Branch(Root),
-    Leaf(Symbol)
+    Leaf(char)
 }
 
 impl Node {
@@ -263,24 +263,10 @@ impl Node {
     }
 
     #[cfg(test)]
-    pub fn leaf(self) -> Option<Symbol> {
+    pub fn leaf(self) -> Option<char> {
         match self {
-            Node::Leaf(leaf) => Some(leaf),
+            Node::Leaf(symbol) => Some(symbol),
             Node::Branch(_) => None,
-        }
-    }
-}
-
-#[allow(dead_code)]
-#[derive(Debug, Clone)]
-pub struct Symbol {
-    pub value: char
-}
-
-impl Symbol {
-    fn new(value: char) -> Self {
-        Self {
-            value,
         }
     }
 }
@@ -302,7 +288,7 @@ pub fn tread(huffman_tree: &Root, code_path: BitVec<u8, Lsb0>) -> String {
         match *Root::walk(leg, code) {
             Node::Leaf(symbol) => {
                 walk_root = None;
-                decoded.push(symbol.value);
+                decoded.push(symbol);
             },
             Node::Branch(root) => {
                 walk_root = Some(root)
@@ -362,7 +348,7 @@ mod test {
             .leaf()
             .unwrap();
 
-        assert_eq!(f.value, 'f');
+        assert_eq!(f, 'f');
     }
 
     #[test]
@@ -371,17 +357,17 @@ mod test {
         let step_1 = Root::walk(&tree, false).branch().unwrap();
         let step_2 = Root::walk(&step_1, true).branch().unwrap();
         let step_3 = Root::walk(&step_2, false).leaf().unwrap();
-        assert_eq!(step_3.value, 'h');
+        assert_eq!(step_3, 'h');
 
         let step_1 = Root::walk(&tree, false).branch().unwrap();
         let step_2 = Root::walk(&step_1, false).branch().unwrap();
         let step_3 = Root::walk(&step_2, false).leaf().unwrap();
-        assert_eq!(step_3.value, 'n');
+        assert_eq!(step_3, 'n');
 
         let step_1 = Root::walk(&tree, true).branch().unwrap();
         let step_2 = Root::walk(&step_1, false).branch().unwrap();
         let step_3 = Root::walk(&step_2, true).leaf().unwrap();
-        assert_eq!(step_3.value, '\n');
+        assert_eq!(step_3, '\n');
     }
     
 
